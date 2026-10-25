@@ -59,6 +59,13 @@ function tb(x, y, v, extra = '') {
 function draw(g, pair, ghost, popping) {
   const b = document.getElementById('board'); if (!b) return;
   let s = '<div class="grid" style="background-size:' + ui.cell + 'px ' + ui.cell + 'px"></div>';
+  // 落ちてくる列に薄いレーンを引き、着地する場所に小さな印を出す
+  if (pair) {
+    const c = ui.cell, cols = [...new Set(cellsOf(pair).map(([x]) => x))];
+    for (const x of cols) s += `<div class="lane" style="left:${x * c + 2}px;width:${c}px"></div>`;
+    const land = dropTo(g, pair), tmp = clone(g); lockPair(tmp, land);
+    for (let x = 0; x < W; x++) for (let y = 0; y < VIS; y++) if (tmp[x][y] && !g[x][y]) s += `<div class="landmark c${tmp[x][y]}" style="width:${c - 4}px;height:${c - 4}px;left:${x * c + 2}px;top:${(VIS - 1 - y) * c + 2}px"></div>`;
+  }
   if (ghost) for (const [x, y, v] of ghost) s += tb(x, y, v, 'ghost');
   for (let x = 0; x < W; x++) for (let y = 0; y < VIS; y++) if (g[x][y]) s += tb(x, y, g[x][y], popping && popping.has(x * H + y) ? 'pop' : '');
   if (pair) for (const [x, y, v] of cellsOf(pair)) if (y < VIS) s += tb(x, y, v);
@@ -150,6 +157,23 @@ const LESSONS = [
     [3, 0, 3, 1, '4列目の上に3列目の色。'],
     [4, 1, 4, 1, '5列目で<b>発火</b>! 4つの列が順番にくずれます。'],
   ], end: '<b>4連鎖!</b> 実戦では、この上にもう1段積む「折り返し」などで、もっと長くつなげます。' },
+  { id: 'l5', title: '折り返し', sub: '上の段で次の連鎖を待たせる', steps: [
+    [0, 0, 1, 1, '「折り返し」は、連鎖を<b>上の段へ返して</b>長くする形。まず2連鎖と同じように、左はしに縦2つ。'],
+    [0, 1, 1, 2, '1列目を3つに、2列目に次の色。'],
+    [1, 0, 2, 2, '2列目も3つに。'],
+    [0, 1, 3, 1, '1列目の上に<b>新しい色</b>、2列目の上に<b>1列目の色</b>(2連鎖の「上に1つ」)。'],
+    [0, 1, 3, 3, 'さらに上に、新しい色を横に2つ。ここが<b>折り返し</b>部分。下が2回消えたあと、落ちてきて1つにまとまります。'],
+    [2, 0, 2, 3, '3列目に置いて<b>発火</b>! 2列目→1列目と消えたあと、上の段が落ちてきて3つ目の連鎖に。'],
+  ], end: '<b>3連鎖!</b> 下が消えると上が落ちてくる。「上の段で次の連鎖を待たせる」のが折り返しです。下の階段を長くして、上で折り返すと5連鎖、6連鎖…と伸ばせます。' },
+  { id: 'l6', title: 'GTR', sub: '上級者の定番の土台', steps: [
+    [0, 1, 2, 2, '<b>GTR</b>は、上級者がよく使う連鎖の「土台」。まず左はしの1段目に、同じ色を横に2つ。'],
+    [0, 1, 1, 1, '2段目に、別の色を横に2つ。'],
+    [0, 1, 1, 2, '3段目: 左に2段目と同じ色、右に<b>1段目と同じ色</b>(フタ)。L字の上にフタが乗った形です。'],
+    [2, 1, 3, 3, '3列目と4列目の1段目に、次の色を横に2つ。'],
+    [2, 0, 2, 3, '3列目の2段目に<b>1段目の色</b>、その上に3列目と同じ色。'],
+    [3, 0, 3, 4, '4列目に3つ目の色。上の1つはつながらない色なので気にしなくてOK。'],
+    [0, 0, 1, 4, '左はしの上に置いて<b>発火</b>! L字が消える→フタが落ちて1段目とつながる→3列目の上が落ちて…'],
+  ], end: '<b>3連鎖!</b> GTRは「L字+フタ」の土台。右側に階段や折り返しをつないでいけば、10連鎖以上も組めます。' },
 ];
 const done = load('done', {});
 const record = load('record', { max: 0 });

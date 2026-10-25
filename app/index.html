@@ -55,6 +55,9 @@ p { margin: 0; }
 .tb.c2 { background: radial-gradient(circle at 40% 35%, #8ef0ad, var(--c2) 60%, #2b9b52); }
 .tb.c3 { background: radial-gradient(circle at 40% 35%, #8cc6ff, var(--c3) 60%, #2a6fc0); }
 .tb.c4 { background: radial-gradient(circle at 40% 35%, #ffe79a, var(--c4) 60%, #c9a01c); }
+.lane { position: absolute; top: 0; bottom: 0; background: rgba(255,255,255,.06); border-left: 1px solid rgba(255,255,255,.28); border-right: 1px solid rgba(255,255,255,.28); pointer-events: none; }
+.landmark { position: absolute; border-radius: 50%; border: 2px dashed rgba(255,255,255,.55); pointer-events: none; }
+.landmark.c1 { border-color: var(--c1); } .landmark.c2 { border-color: var(--c2); } .landmark.c3 { border-color: var(--c3); } .landmark.c4 { border-color: var(--c4); }
 .tb.ghost { opacity: .32; outline: 2px dashed #fff; outline-offset: -3px; }
 .tb.pop { animation: pop .35s ease-in forwards; }
 @keyframes pop { 50% { transform: scale(1.25); filter: brightness(1.8); } 100% { transform: scale(0); opacity: 0; } }
