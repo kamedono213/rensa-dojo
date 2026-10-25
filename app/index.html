@@ -1,0 +1,74 @@
+<title>れんさ道場</title>
+<meta name="description" content="落ちものパズルの連鎖の組み方を、お手本どおりに置きながら覚える練習ゲーム。2連鎖・3連鎖・4連鎖のレッスンと自由プレイ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* レイアウト: 夜の道場。紺の盤面に、色つきの丸いつぶ。下に操作ボタン */
+:root {
+  --bg: #1d1b2e; --panel: #2a2742; --panel2: #34305a; --ink: #f4f2ff; --sub: #b6b1d6; --line: #46416e;
+  --accent: #ffb547; --ok: #5ed39a; --ng: #ff6b6b;
+  --c1: #ff5a6e; --c2: #4fd27a; --c3: #4aa3ff; --c4: #ffd34d;
+  --display: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --r: 14px; color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; overscroll-behavior: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2 { font-family: var(--display); font-weight: 800; margin: 0; }
+p { margin: 0; }
+.muted { color: var(--sub); } .small { font-size: 13px; }
+
+.home { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; }
+.home h1 { font-size: clamp(34px, 10vw, 52px); line-height: 1.1; } .home h1 span { color: var(--accent); }
+.list { display: grid; gap: 10px; }
+.item { text-align: left; border: 1.5px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+.item .n { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--accent); width: 34px; text-align: center; }
+.item b { font-family: var(--display); font-size: 17px; display: block; }
+.item .ok { color: var(--ok); font-weight: 800; }
+.item.free { border-color: var(--accent); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 8px; }
+.tip { border-left: 4px solid var(--accent); padding: 4px 10px; }
+
+/* プレイ画面: 上=説明、中=盤面とNEXT、下=操作 */
+.play { height: 100dvh; display: grid; grid-template-rows: auto auto 1fr auto; max-width: 560px; margin: 0 auto; }
+.top { display: flex; gap: 8px; align-items: center; padding: 8px 10px 4px; }
+.top .t { flex: 1; font-family: var(--display); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; }
+.say { margin: 0 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; min-height: 58px; font-size: 14px; }
+.say b { color: var(--accent); }
+.say.ng { border-color: var(--ng); } .say.ok { border-color: var(--ok); }
+.mid { display: flex; gap: 10px; justify-content: center; align-items: stretch; padding: 8px 10px; min-height: 0; }
+.board { position: relative; background: #12111f; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; flex: none; }
+.board .grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px); }
+.side { display: flex; flex-direction: column; gap: 8px; width: 74px; flex: none; }
+.next { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: grid; justify-items: center; gap: 2px; }
+.next .lab { font-size: 11px; color: var(--sub); font-weight: 700; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px; text-align: center; font-size: 12px; color: var(--sub); }
+.stat b { display: block; color: var(--ink); font-family: var(--display); font-size: 20px; }
+.tb { position: absolute; border-radius: 50%; transition: top .12s linear, left .08s linear; }
+.tb::after { content: ""; position: absolute; left: 22%; top: 16%; width: 30%; height: 24%; border-radius: 50%; background: rgba(255,255,255,.55); }
+.tb.c1 { background: radial-gradient(circle at 40% 35%, #ff8a98, var(--c1) 60%, #c23447); }
+.tb.c2 { background: radial-gradient(circle at 40% 35%, #8ef0ad, var(--c2) 60%, #2b9b52); }
+.tb.c3 { background: radial-gradient(circle at 40% 35%, #8cc6ff, var(--c3) 60%, #2a6fc0); }
+.tb.c4 { background: radial-gradient(circle at 40% 35%, #ffe79a, var(--c4) 60%, #c9a01c); }
+.tb.ghost { opacity: .32; outline: 2px dashed #fff; outline-offset: -3px; }
+.tb.pop { animation: pop .35s ease-in forwards; }
+@keyframes pop { 50% { transform: scale(1.25); filter: brightness(1.8); } 100% { transform: scale(0); opacity: 0; } }
+.chainmsg { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font-family: var(--display); font-weight: 800; font-size: 34px; color: var(--accent); text-shadow: 0 3px 0 #000; pointer-events: none; animation: rise .9s ease-out forwards; }
+@keyframes rise { from { transform: translateY(14px); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(-16px); opacity: 0; } }
+.ctrl { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 6px 10px 12px; }
+.ctrl button { border: 1px solid var(--line); background: var(--panel2); border-radius: 12px; height: 58px; font-size: 22px; font-weight: 800; touch-action: manipulation; user-select: none; }
+.ctrl button:active { background: var(--line); }
+.ctrl .drop { background: var(--accent); color: #2a1d00; border-color: var(--accent); }
+.subctrl { display: flex; gap: 8px; justify-content: center; padding: 0 10px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 14px; }
+.btn.main { background: var(--accent); color: #2a1d00; border-color: var(--accent); }
+.overlay { position: absolute; inset: 0; background: rgba(18,17,31,.82); display: grid; place-items: center; text-align: center; padding: 10px; z-index: 5; }
+.overlay .big { font-family: var(--display); font-size: 30px; font-weight: 800; color: var(--accent); }
+</style>
+<div id="app"></div>
+<script src="app.js"></script>
