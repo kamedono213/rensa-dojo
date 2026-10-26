@@ -69,9 +69,12 @@
   css.textContent = '.rbw,.rb{margin:0!important;border:0!important;background:none!important;min-width:0!important;font:inherit!important;color:inherit!important;letter-spacing:inherit!important;text-indent:0!important}'
     + '.rbw{display:inline!important;padding:0!important}'
     + '.rb{display:inline-block!important;position:relative!important;padding:0!important}'
-    + 'html.furi .rb{padding-top:.62em!important}'
-    + 'html.furi .rb::before{content:attr(data-rt);position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:.5em;font-weight:700;line-height:1.1;white-space:nowrap;letter-spacing:0;pointer-events:none}'
-    + '.furi-toggle{justify-self:start;align-self:center;width:auto;flex:none;border:1.5px solid rgba(127,127,127,.4);background:transparent;color:inherit;border-radius:999px;padding:4px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}'
+    // ふりがなありの時は行の高さを広げ、読みは行間(漢字の上のすき間)に置く。行ごとに高さがばらつかない
+    + 'html.furi body{line-height:2.2}'
+    + 'html.furi .rb{line-height:max(2.2em, 1em + 17px)!important}'
+    + 'html.furi .rb::before{content:attr(data-rt);position:absolute;bottom:calc(50% + 1.02em);left:50%;transform:translateX(-50%);font-size:max(.5em,7.5px);font-weight:700;line-height:1.1;white-space:nowrap;letter-spacing:0;pointer-events:none}'
+    + '.furi-tools{display:inline-flex;flex-wrap:wrap;gap:6px;justify-self:start;align-self:center;width:auto;flex:none;line-height:1.4}'
+    + '.furi-toggle{width:auto;flex:none;line-height:1.4;border:1.5px solid rgba(127,127,127,.4);background:transparent;color:inherit;border-radius:999px;padding:4px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}'
     + '.furi-toggle[aria-pressed="true"]{border-color:currentColor}';
   document.head.appendChild(css);
   const apply = () => document.documentElement.classList.toggle('furi', on);
@@ -109,6 +112,12 @@
     const w = document.createElement('span'); w.className = 'rbw'; w.appendChild(frag);
     node.replaceWith(w);
   }
+  // 切りかえボタンを入れる箱(効果音ボタンもここに入る)
+  function tools(slot) {
+    let box = slot.querySelector(':scope > .furi-tools');
+    if (!box) { box = document.createElement('span'); box.className = 'furi-tools'; box.setAttribute('data-nofuri', ''); slot.appendChild(box); }
+    return box;
+  }
   function toggleHtml() { return `<button type="button" class="furi-toggle" data-furi-toggle aria-pressed="${on}">ふりがな ${on ? 'あり' : 'なし'}</button>`; }
   function scan(root) {
     if (root.nodeType === 3) { if (ok(root.parentNode)) wrapText(root); return; }
@@ -116,8 +125,9 @@
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [];
     let n; while ((n = w.nextNode())) if (ok(n.parentNode)) list.push(n);
     list.forEach(wrapText);
-    root.querySelectorAll && root.querySelectorAll('[data-furi-slot]').forEach(s => { if (!s.querySelector('[data-furi-toggle]')) s.insertAdjacentHTML('beforeend', toggleHtml()); });
-    if (root.hasAttribute && root.hasAttribute('data-furi-slot') && !root.querySelector('[data-furi-toggle]')) root.insertAdjacentHTML('beforeend', toggleHtml());
+    const slots = root.querySelectorAll ? [...root.querySelectorAll('[data-furi-slot]')] : [];
+    if (root.hasAttribute && root.hasAttribute('data-furi-slot')) slots.push(root);
+    slots.forEach(s => { if (!s.querySelector('[data-furi-toggle]')) tools(s).insertAdjacentHTML('afterbegin', toggleHtml()); });
   }
   new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) scan(n); })
     .observe(document.documentElement, { childList: true, subtree: true });
@@ -127,7 +137,68 @@
     apply();
     document.querySelectorAll('[data-furi-toggle]').forEach(x => { x.setAttribute('aria-pressed', on); x.textContent = 'ふりがな ' + (on ? 'あり' : 'なし'); });
   });
+  window.furiTools = tools;
   if (document.body) scan(document.body);
+})();
+
+// ---------- 効果音(Web Audio で合成。音声ファイルは使わない)
+// SE.play('ok') のように呼ぶ。音の名前: start / select / ok / ng / star / result / perfect / land / clear / over
+// SE.chain(n) は連鎖の n 段目(段ごとに高くなる)。
+// 「音あり/なし」ボタンは data-furi-slot の場所に自動で入る(ふりがなボタンのとなり)。設定はアプリごとに保存
+const SE = (() => {
+  const KEY = 'se-muted:' + location.pathname;
+  let muted = false, ctx = null;
+  try { muted = localStorage.getItem(KEY) === '1'; } catch (e) { /* 保存できなくても動く */ }
+  function ac() {
+    if (!ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ctx = new C(); }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  // 1音: 周波数・開始(秒)・長さ・波形・音量・(最後の周波数)
+  function tone(freq, at, dur, type = 'sine', vol = 0.18, slideTo = null) {
+    const c = ac(); if (!c) return;
+    const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  const SOUNDS = {
+    start: () => { tone(523, 0, 0.09, 'triangle'); tone(784, 0.08, 0.14, 'triangle'); },
+    select: () => tone(660, 0, 0.06, 'triangle', 0.12),
+    ok: () => { tone(880, 0, 0.12, 'sine', 0.2); tone(1319, 0.1, 0.28, 'sine', 0.2); },
+    ng: () => tone(220, 0, 0.32, 'square', 0.07, 150),
+    star: () => [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, i * 0.07, 0.22, 'sine', 0.14)),
+    result: () => [523, 659, 784].forEach((f, i) => tone(f, i * 0.11, 0.18, 'triangle')),
+    perfect: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.1, 0.16, 'triangle')); [1047, 1319, 1568].forEach(f => tone(f, 0.42, 0.6, 'sine', 0.1)); },
+    land: () => tone(180, 0, 0.08, 'triangle', 0.16, 110),
+    clear: () => { [659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.14, 'triangle')); tone(1319, 0.3, 0.45, 'sine', 0.12); },
+    over: () => [392, 330, 262].forEach((f, i) => tone(f, i * 0.16, 0.26, 'triangle', 0.14)),
+  };
+  function play(name) { if (muted || !SOUNDS[name]) return; try { SOUNDS[name](); } catch (e) { /* 音が出せない環境でも遊べる */ } }
+  function chain(n) {
+    if (muted) return;
+    try { const f = 440 * Math.pow(2, Math.min(n - 1, 9) * 2 / 12); tone(f, 0, 0.1, 'triangle', 0.16); tone(f * 1.5, 0.07, 0.18, 'sine', 0.12); } catch (e) { /* 同上 */ }
+  }
+  const btn = () => `<button type="button" class="furi-toggle" data-se-toggle aria-pressed="${!muted}">${muted ? '🔇 音なし' : '🔊 音あり'}</button>`;
+  function addButtons(root) {
+    if (!root.querySelectorAll) return;
+    const slots = [...root.querySelectorAll('[data-furi-slot]')];
+    if (root.hasAttribute && root.hasAttribute('data-furi-slot')) slots.push(root);
+    slots.forEach(s => { if (!s.querySelector('[data-se-toggle]')) (window.furiTools ? window.furiTools(s) : s).insertAdjacentHTML('beforeend', btn()); });
+  }
+  new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) addButtons(n); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-se-toggle]'); if (!b) return;
+    muted = !muted; try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (err) { /* 保存できなくても切りかわる */ }
+    document.querySelectorAll('[data-se-toggle]').forEach(x => { x.setAttribute('aria-pressed', !muted); x.textContent = muted ? '🔇 音なし' : '🔊 音あり'; });
+    play('select');
+  });
+  if (document.body) addButtons(document.body);
+  return { play, chain, get muted() { return muted; } };
 })();
 
 
@@ -180,6 +251,8 @@ function sizeBoard() {
   const cell = Math.max(18, Math.floor(Math.min(availW / W, availH / VIS)));
   ui.cell = cell; b.style.width = cell * W + 4 + 'px'; b.style.height = cell * VIS + 4 + 'px';
   b.querySelector('.grid').style.backgroundSize = `${cell}px ${cell}px`;
+  // 説明文の行数やふりがなで上の枠の高さが変わったら、盤の大きさを合わせ直す
+  if (!mid._ro && window.ResizeObserver) { let h = mid.clientHeight; mid._ro = new ResizeObserver(() => { if (mid.clientHeight !== h && document.body.contains(b)) { h = mid.clientHeight; sizeBoard(); render(); } }); mid._ro.observe(mid); }
 }
 function tb(x, y, v, extra = '') {
   const c = ui.cell, s = c - 4;
@@ -213,7 +286,7 @@ async function resolveAnimated(g, onChain) {
     const gs = groups(g); if (!gs.length) return chain;
     chain++;
     const pop = new Set(); gs.forEach(gr => gr.forEach(([x, y]) => pop.add(x * H + y)));
-    draw(g, null, null, pop); chainMsg(chain); onChain && onChain(chain);
+    draw(g, null, null, pop); chainMsg(chain); SE.chain(chain); onChain && onChain(chain);
     await sleep(420);
     pop.forEach(k => { g[Math.floor(k / H)][k % H] = 0; });
     settle(g); draw(g); await sleep(260);
@@ -309,6 +382,7 @@ const record = load('record', { max: 0 });
 
 function shuffledColors() { const a = [1, 2, 3, 4]; for (let i = 3; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return [0, ...a]; }
 function lesson(id, demo = false) {
+  SE.play('start');
   const L = LESSONS.find(l => l.id === id), map = shuffledColors();
   let step = 0, history = [];
   ui = { g: newGrid(), pair: null, ghost: null, busy: false, cell: 30 };
@@ -350,10 +424,11 @@ function lesson(id, demo = false) {
     const want = clone(ui.g); lockPair(want, dropTo(ui.g, target()));
     if (JSON.stringify(test) !== JSON.stringify(want)) {
       ui.pair = { x: 2, y: 10, rot: 0, a: ui.pair.a, c: ui.pair.c }; render();
+      SE.play('ng');
       say('<b>そこじゃないよ。</b>うすく光っている場所に、同じ色の向きで置いてみよう。(⟳で回転)', 'ng');
       return;
     }
-    ui.busy = true; ui.pair = null; ui.ghost = null; ui.g = test; render();
+    ui.busy = true; ui.pair = null; ui.ghost = null; ui.g = test; render(); SE.play('land');
     history.push(before);
     const n = await resolveAnimated(ui.g, c => document.getElementById('ch').textContent = c);
     ui.busy = false; step++;
@@ -361,6 +436,7 @@ function lesson(id, demo = false) {
       done[id] = true; save('done', done);
       if (n > record.max) { record.max = n; save('record', record); }
       say(L.end, 'ok');
+      setTimeout(() => SE.play('clear'), 500);
       const i = LESSONS.indexOf(L), next = LESSONS[i + 1];
       const b = document.getElementById('board');
       const ov = document.createElement('div'); ov.className = 'overlay';
@@ -375,6 +451,7 @@ function lesson(id, demo = false) {
 
 // ---------- かるくプレイ ----------
 function freePlay() {
+  SE.play('start');
   const randPair = () => ({ a: 1 + rnd(4), c: 1 + rnd(4) });
   let queue = [randPair(), randPair(), randPair()], score = 0, maxChain = 0, timer = null, over = false;
   ui = { g: newGrid(), pair: null, ghost: null, busy: false, cell: 30 };
@@ -397,7 +474,7 @@ function freePlay() {
     render();
   }
   function gameOver() {
-    over = true; clearInterval(timer); ui.pair = null;
+    over = true; clearInterval(timer); ui.pair = null; SE.play('over');
     const ov = document.createElement('div'); ov.className = 'overlay';
     ov.innerHTML = `<div style="display:grid;gap:10px"><div class="big">おしまい</div><p>最大 ${maxChain}れんさ ・ ${score}点</p><div class="subctrl"><button class="btn main" id="again">もう一度</button><button class="btn" id="back" data-noconfirm>メニュー</button></div></div>`;
     document.getElementById('board').appendChild(ov);
@@ -405,7 +482,7 @@ function freePlay() {
   }
   ui.onLand = async () => {
     if (ui.busy || over) return;
-    ui.busy = true; lockPair(ui.g, ui.pair); ui.pair = null; render();
+    ui.busy = true; lockPair(ui.g, ui.pair); ui.pair = null; render(); SE.play('land');
     const n = await resolveAnimated(ui.g, c => document.getElementById('ch').textContent = c);
     if (n) {
       score += [0, 40, 120, 320, 640, 1100, 1700, 2500][Math.min(n, 7)] + n * 40;

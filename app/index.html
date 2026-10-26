@@ -34,14 +34,14 @@ p { margin: 0; }
 .tip { border-left: 4px solid var(--accent); padding: 4px 10px; }
 
 /* プレイ画面: 上=説明、中=盤面とNEXT、下=操作 */
-.play { height: 100dvh; display: grid; grid-template-rows: auto auto 1fr auto; max-width: 560px; margin: 0 auto; }
+.play { height: 100dvh; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; max-width: 560px; margin: 0 auto; }
 .top { display: flex; gap: 8px; align-items: center; padding: 8px 10px 4px; }
 .top .t { flex: 1; font-family: var(--display); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pill { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; }
 .say { margin: 0 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; min-height: 58px; font-size: 14px; }
 .say b { color: var(--accent); }
 .say.ng { border-color: var(--ng); } .say.ok { border-color: var(--ok); }
-.mid { display: flex; gap: 10px; justify-content: center; align-items: stretch; padding: 8px 10px; min-height: 0; }
+.mid { display: flex; gap: 10px; justify-content: center; align-items: stretch; padding: 8px 10px; min-height: 0; overflow: hidden; }
 .board { position: relative; background: #12111f; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; flex: none; }
 .board .grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px); }
 .side { display: flex; flex-direction: column; gap: 8px; width: 74px; flex: none; }
